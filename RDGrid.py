@@ -35,20 +35,39 @@ col = []     # List of column
 temp = []    # Temporal list
 
 # Creates the swap between matrix mat goes to ma0 in order to calculate mat
-def changematrix():
+def changematrix(mat0, mat):
     #temp = mat0
     mat0 = mat
     #mat = temp
     
 # Calculates the Laplacian Convolution for substance  A
-def laplacianA ():
-    resA = 1
-    return resA
+def laplacianA (x, y):
+    sumA = 0
+    sumA += mat0[x-1][y+1][0] * 0.05
+    sumA += mat0[x][y+1][0] * 0.2
+    sumA += mat0[x+1][y+1][0] * 0.05
+    sumA += mat0[x-1][y][0] * 0.2
+    sumA += mat0[x][y][0] * -1
+    sumA += mat0[x+1][y][0] * 0.2
+    sumA += mat0[x-1][y-1][0] * 0.05
+    sumA += mat0[x][y-1][0] * 0.2
+    sumA += mat0[x+1][y-1][0] * 0.05
+    return sumA
 
 # Calculates the Laplacian Convolution for substance B
-def laplacianB ():
-    resB = 1
-    return resB
+def laplacianB (x, y):
+    sumB = 0
+    sumB += mat0[x-1][y+1][1] * 0.05
+    sumB += mat0[x][y+1][1] * 0.2
+    sumB += mat0[x+1][y+1][1] * 0.05
+    sumB += mat0[x-1][y][1] * 0.2
+    sumB += mat0[x][y][1] * -1
+    sumB += mat0[x+1][y][1] * 0.2
+    sumB += mat0[x-1][y-1][1] * 0.05
+    sumB += mat0[x][y-1][1] * 0.2
+    sumB += mat0[x+1][y-1][1] * 0.05
+    return sumB
+    
 
 # Returns the number if is between min/max, if not gives the min or the max
 def limiter(val, minVal, maxVal):
@@ -74,13 +93,13 @@ for x in range(Width):
 # Creates the concentration in mat0
 for x in range(3,6):
     for y in range(3,6):
-        mat[x][y][1] = 1
+        mat0[x][y][1] = 1
             
 
 ##################################################
 
 # Iteration loop
-while Run == True:
+for i in range(Iter):
     
     # Calculates the new state
     for x in range(1, Width-1):
@@ -88,25 +107,24 @@ while Run == True:
             a0 = mat0[x][y][0]
             b0 = mat0[x][x][1]
             
-            a = a0 + (da * laplacianA() - a0*(b0**2) + f * (1 - a0) ) * dt
-            b = b0 + (db * laplacianB() + a0*(b0**2) - (k + f) * b0 ) * dt
+            a = a0 + (da * laplacianA(x, y) - a0*(b0**2) + f * (1 - a0) ) * dt
+            b = b0 + (db * laplacianB(x, y) + a0*(b0**2) - (k + f) * b0 ) * dt
             
             mat[x][y][0] = limiter(a, 0, 1)
             mat[x][y][1] = limiter(b, 0, 1)
-           
             
-    
-    
-            
-    Run = False
+    previous = th.list_to_tree(mat)
+    final = th.list_to_tree(mat0)
+    changematrix(mat0, mat)
+    print(i)
 
 
 
 
 
 ######DEBUGING######
-c = th.list_to_tree(mat)
-d = th.list_to_tree(mat0)
+previous = th.list_to_tree(mat)
+final = th.list_to_tree(mat0)
 mesh = rg.Mesh.CreateFromPlane(rg.Plane(rg.Point3d(0,0,0), rg.Vector3d.ZAxis), xSize, ySize, Width, Heigth)
 print("Finish")
 
