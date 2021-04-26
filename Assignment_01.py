@@ -1,13 +1,22 @@
-import Rhino.Geometry as rg
-import math
-import ghpythonlib.treehelpers as th
-
 """Provides a scripting component.
     Inputs:
         x: Int, Extension in x direction of the mesh
         y: Int, Extension in y direction of the mesh
     Output:
-        mesh: Mesh, The resulting ondulated mesh"""
+        a: Pts, Upper points
+        b: Pts, Down points
+        c: Lines, Lines conecting up and down points
+        d: Pts, grid of points
+        e: Int, Z coordenate for each point
+        f: Pts, grid of points moved
+        g: Crv, curves of interpolated pts
+        h: Srf, ondulated surface
+        mesh: Mesh, The resulting ondulated mesh
+        """
+
+import Rhino.Geometry as rg
+import math
+import ghpythonlib.treehelpers as th
 
 
 # Points lists
@@ -127,13 +136,6 @@ for i in range(1, len(moved)):
     
     for j in range(0, len(moved[i])-1):
         mesh.Faces.AddFace(rc_to_index(i, j), rc_to_index(i, j+1), rc_to_index(i-1, j+1), rc_to_index(i-1, j))
-
-
-#mesh.Normals.ComputeNormals()
-#mesh.Compact()
-
-
-
 
 #mesh = rg.Mesh.CreateFromBrep(srf[0], rg.MeshingParameters(1,1))
 #mesh = rg.Mesh.QuadRemeshBrep(srf[0], rg.QuadRemeshParameters())
