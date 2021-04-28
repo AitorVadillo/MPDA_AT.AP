@@ -2,11 +2,17 @@
     Inputs:
         Width: Int, Number of cells in width
         Heigth: Int, Number of cells in Heigth
-        Run: Boolean, True to initialize the reaction
+        Iter: Int, Number of iterations
+        xSize: Int, Distance between points in X direction
+        ySize: Int, Distance between points in Y direction
     Output:
-        a: The a output variable"""
+        srf: Srf, The surface
+        mesh: Mesh, The mesh
+        """
+        
 # http://karlsims.com/rd.html
 """
+A simulation of two virtual chemicals reacting and diffusing on a 2D grid using the Gray-Scott model.
 Reaction: two Bs convert an A into B, as if B reproduces using A as food.
 Some typical values used, for those interested, are: DA=1.0, DB=.5, f=.055, k=.062 (f and k vary for different patterns), and Δt=1.0. 
 The Laplacian is performed with a 3x3 convolution with center weight -1, adjacent neighbors .2, and diagonals .05. 
@@ -20,24 +26,43 @@ import ghpythonlib.treehelpers as th
 
 # http://karlsims.com/rd.html
 # Reaction difusion Variables
-a0 = 1        # Initial concentration of substance A In index 0 in the con list
-b0 = 0        # Initial concentration of substance B In index 1 in the con list
+a0 = 1       # Initial concentration of substance A In index 0 in the con list
+b0 = 0       # Initial concentration of substance B In index 1 in the con list
 da = 1       # Diffusion rate for substance A
 db = 0.5     # Diffusion rate for substance B
 f = 0.055    # Feed rate Speed of adding substance A
 k = 0.062    # Kill rate Speed of removing substance B
 dt = 1       # Delta time for each iteration
 
+##################################################
+# Creates the matrix of points
+Pts = []
+colPts = []
+
+for x in range(0, Width, xSize):
+    colPts = []
+    for y in range(0, Heigth, ySize):
+        pt = rg.Point3d(x, y, 0)
+        colPts.append(pt)
+    Pts.append(colPts)
+        
+
+
+
 
 mat0 = []    # Matrix with the concentration stets in the previous iteration or initial state (List of Columns)
 mat = []     # Matrix with the concentration states (List of Columns)
-col = []     # List of column
+col = []     # List of colum
 temp = []    # Temporal list
+corZ = []    # Matrix with cordinate Z of Pts
+curves = []  # List with interpolated curves
 
 # Creates the swap between matrix mat goes to ma0 in order to calculate mat
-def changematrix(mat0, mat):
+def changematrix():
+    global mat0 
+    global mat
     #temp = mat0
-    mat0 = mat
+    mat0 = mat 
     #mat = temp
     
 # Calculates the Laplacian Convolution for substance  A
@@ -68,13 +93,10 @@ def laplacianB (x, y):
     sumB += mat0[x+1][y-1][1] * 0.05
     return sumB
     
-
 # Returns the number if is between min/max, if not gives the min or the max
 def limiter(val, minVal, maxVal):
     return min(maxVal, max(minVal, val))
     
-
-
 ##################################################
 # Creates the matrix mat0 and mat
 for x in range(Width):
@@ -90,42 +112,123 @@ for x in range(Width):
     col = []
 
 ##################################################
-# Creates the concentration in mat0
-for x in range(3,6):
-    for y in range(3,6):
+# Creates the initial concentration in mat0
+for x in range(4,7):
+    for y in range(4,7):
         mat0[x][y][1] = 1
-            
 
 ##################################################
+# Set the preconditions in Z (Initial case)
+#--------------------------------------------------------------------------------------------------------
+# Matrix of points Z Values
+for x in range(Width):
+    col = []
+    for y in range(Heigth):
+        z = (mat0[x][y][0] * amp) - (mat0[x][y][1] * amp)
+        col.append(z)
 
+    corZ.append(col)
+    
+    # Set the new value for Z on the Pts
+for x in range(Width):
+    for y in range(Heigth):
+        Pts[x][y].Z = corZ[x][y]
+
+# List of interpolated curves
+for i in range(len(Pts)):
+        curves.append(rg.Curve.CreateInterpolatedCurve(Pts[i], 3))
+
+# Create the surface
+srf = rg.Brep.CreateFromLoft(curves, rg.Point3d.Unset, rg.Point3d.Unset, rg.LoftType(), False)
+
+# Create the mesh
+meshVertex = []
+meshVertexL = []
+mesh = rg.Mesh()
+
+for i in range(Width):
+    for j in range(Heigth):
+        mesh.Vertices.Add(Pts[i][j])
+
+# Function that converts the position in the matrix (r,c) to an index
+def rc_to_index (co, ro):
+    index = co * Heigth + ro
+    return index
+
+for i in range(1, Width):
+        
+    for j in range(0, Heigth-1):
+        mesh.Faces.AddFace(rc_to_index(i, j), rc_to_index(i, j+1), rc_to_index(i-1, j+1), rc_to_index(i-1, j))
+
+#--------------------------------------------------------------------------------------------------------
+
+##################################################
 # Iteration loop
 for i in range(Iter):
-    
+    curves = []
+    corZ = []
     # Calculates the new state
     for x in range(1, Width-1):
         for y in range(1, Heigth-1):
             a0 = mat0[x][y][0]
             b0 = mat0[x][x][1]
             
-            a = a0 + (da * laplacianA(x, y) - a0*(b0**2) + f * (1 - a0) ) * dt
-            b = b0 + (db * laplacianB(x, y) + a0*(b0**2) - (k + f) * b0 ) * dt
+            a = a0 + (da * laplacianA(x, y) - a0* (b0**2) + f * (1 - a0) ) * dt
+            b = b0 + (db * laplacianB(x, y) + a0* (b0**2) - (k + f) * b0 ) * dt
             
             mat[x][y][0] = limiter(a, 0, 1)
             mat[x][y][1] = limiter(b, 0, 1)
             
-    previous = th.list_to_tree(mat)
-    final = th.list_to_tree(mat0)
-    changematrix(mat0, mat)
-    print(i)
+    changematrix()
+
+##################################################
+#Calculate geometry after iterations
+#Remove Case 0
+ 
 
 
+# Matrix of points Z Values
+for x in range(Width):
+    col = []
+    for y in range(Heigth):
+            z = (mat[x][y][0] * amp) - (mat[x][y][1] * amp)
+            col.append(z)
+    corZ.append(col)
+    
+# Set the new value for Z on the Pts
+for x in range(Width):
+    for y in range(Heigth):
+        Pts[x][y].Z = corZ[x][y]
+    
+# Create the nurbs per column
+for i in range(len(Pts)):
+    curves.append(rg.Curve.CreateInterpolatedCurve(Pts[i], 3))
+    
+# Create the surface
+srf = rg.Brep.CreateFromLoft(curves, rg.Point3d.Unset, rg.Point3d.Unset, rg.LoftType(), False)
+    
+# Create the mesh
+meshVertex = []
+meshVertexL = []
+mesh = rg.Mesh()
 
+for i in range(Width):
+    for j in range(Heigth):
+        mesh.Vertices.Add(Pts[i][j])
 
+# Function that converts the position in the matrix (r,c) to an index
+def rc_to_index (co, ro):
+    index = co * Heigth + ro
+    return index
+
+for i in range(1, Width):
+        
+    for j in range(0, Heigth-1):
+        mesh.Faces.AddFace(rc_to_index(i, j), rc_to_index(i, j+1), rc_to_index(i-1, j+1), rc_to_index(i-1, j))
 
 ######DEBUGING######
-previous = th.list_to_tree(mat)
-final = th.list_to_tree(mat0)
-mesh = rg.Mesh.CreateFromPlane(rg.Plane(rg.Point3d(0,0,0), rg.Vector3d.ZAxis), xSize, ySize, Width, Heigth)
+#previous = th.list_to_tree(mat0)
+#final = th.list_to_tree(mat)
+Grid = th.list_to_tree(Pts)
 print("Finish")
-
-
+print (mat0)
