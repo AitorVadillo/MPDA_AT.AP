@@ -5,6 +5,9 @@
         Iter: Int, Number of iterations
         xSize: Int, Distance between points in X direction
         ySize: Int, Distance between points in Y direction
+        amp: Int, Amplitude of the curves
+        CompuCurves: Bool, If true computs and outputs the curves
+        CompuSrf: Bool, If true computs and outputs the curves and the surface 
     Output:
         srf: Srf, The surface
         mesh: Mesh, The mesh
@@ -17,7 +20,7 @@ Reaction: two Bs convert an A into B, as if B reproduces using A as food.
 Some typical values used, for those interested, are: DA=1.0, DB=.5, f=.055, k=.062 (f and k vary for different patterns), and Δt=1.0. 
 The Laplacian is performed with a 3x3 convolution with center weight -1, adjacent neighbors .2, and diagonals .05. 
 The grid is initialized with A=1, B=0, and a small area is seeded with B=1.
-The grid is visualized by assigning each cell a color from it's A and B values. Here A is white and B is black.
+The grid is visualized by assigning each point a Z coordinate from it's A and B values. Here A is Z=amp  and B Z=-amp.
 """
 import Rhino.Geometry as rg
 import random as rnd
@@ -45,8 +48,6 @@ for x in range(0, Width, xSize):
         pt = rg.Point3d(x, y, 0)
         colPts.append(pt)
     Pts.append(colPts)
-        
-
 
 
 
@@ -113,9 +114,15 @@ for x in range(Width):
 
 ##################################################
 # Creates the initial concentration in mat0
-for x in range(4,7):
-    for y in range(4,7):
+for x in range(45,56):
+    for y in range(45,56):
         mat0[x][y][1] = 1
+
+# Set a=1 and b=1 to the boundary points, in order to layout in z = 0
+for x in range(Width):
+    for y in range(Heigth):
+        if x == 0 or x == Width-1 or y == 0 or y == Heigth-1 :
+            mat0[x][y][1] = 1
 
 ##################################################
 # Set the preconditions in Z (Initial case)
@@ -133,13 +140,15 @@ for x in range(Width):
 for x in range(Width):
     for y in range(Heigth):
         Pts[x][y].Z = corZ[x][y]
-
+"""
 # List of interpolated curves
-for i in range(len(Pts)):
-        curves.append(rg.Curve.CreateInterpolatedCurve(Pts[i], 3))
+if CompuSrf == True or CompuCurves == True:
+    for i in range(len(Pts)):
+            curves.append(rg.Curve.CreateInterpolatedCurve(Pts[i], 3))
 
 # Create the surface
-srf = rg.Brep.CreateFromLoft(curves, rg.Point3d.Unset, rg.Point3d.Unset, rg.LoftType(), False)
+if CompuSrf == True:
+    srf = rg.Brep.CreateFromLoft(curves, rg.Point3d.Unset, rg.Point3d.Unset, rg.LoftType(), False)
 
 # Create the mesh
 meshVertex = []
@@ -159,7 +168,7 @@ for i in range(1, Width):
         
     for j in range(0, Heigth-1):
         mesh.Faces.AddFace(rc_to_index(i, j), rc_to_index(i, j+1), rc_to_index(i-1, j+1), rc_to_index(i-1, j))
-
+"""
 #--------------------------------------------------------------------------------------------------------
 
 ##################################################
@@ -201,11 +210,13 @@ for x in range(Width):
         Pts[x][y].Z = corZ[x][y]
     
 # Create the nurbs per column
-for i in range(len(Pts)):
-    curves.append(rg.Curve.CreateInterpolatedCurve(Pts[i], 3))
+if CompuSrf == True or CompuCurves == True:
+    for i in range(len(Pts)):
+        curves.append(rg.Curve.CreateInterpolatedCurve(Pts[i], 3))
     
 # Create the surface
-srf = rg.Brep.CreateFromLoft(curves, rg.Point3d.Unset, rg.Point3d.Unset, rg.LoftType(), False)
+if CompuSrf == True:
+    srf = rg.Brep.CreateFromLoft(curves, rg.Point3d.Unset, rg.Point3d.Unset, rg.LoftType(), False)
     
 # Create the mesh
 meshVertex = []
